@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Панель Администратора v3.0 PRO</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(-45deg, #070518, #0d1b2a, #1b263b, #0d0d1f);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: #eaf8ff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(124,77,255,0.2), rgba(0,229,255,0.2));
+            border-radius: 15px;
+            border: 2px solid rgba(124,77,255,0.5);
+        }
+        .title { font-size: 32px; color: #00ffff; text-shadow: 0 0 20px #00ffff; }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: linear-gradient(90deg, #7c4dff, #00e5ff); color: #fff; }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn:hover { transform: translateY(-2px); }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 15px 30px;
+            border: 2px solid;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        .tab-btn.active { opacity: 1; transform: scale(1.05); }
+        .content {
+            min-height: 400px;
+            background: rgba(255,255,255,0.03);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .user-card {
+            background: linear-gradient(135deg, rgba(124,77,255,0.1), rgba(0,229,255,0.1));
+            border: 2px solid;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .user-header { font-size: 24px; color: #00ffff; margin-bottom: 15px; }
+        .user-info {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .info-row { color: #eee; margin-bottom: 10px; }
+        .info-value {
+            background: rgba(124,77,255,0.3);
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .action-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .empty { text-align: center; padding: 60px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">🔥 ПАНЕЛЬ АДМИНИСТРАТОРА v2.0</div>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn btn-primary" onclick="window.location.href='index.html'">🏠 Назад</button>
+                <button class="btn btn-danger" onclick="logout()">🚪 Выйти</button>
+            </div>
+        </div>
+
+        <div style="background: rgba(124,77,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+            <h3 style="color: #00ffff; margin-bottom: 10px;">👤 Администратор: <span id="adminName">...</span></h3>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn" id="tabPending" onclick="showTab('pending')" style="background: rgba(255,165,2,0.2); border-color: #ffa502; color: #ffa502;">
+                ⏳ Ожидают (<span id="countPending">0</span>)
+            </button>
+            <button class="tab-btn active" id="tabActive" onclick="showTab('active')" style="background: rgba(0,255,136,0.2); border-color: #00ff88; color: #00ff88;">
+                ✅ Активные (<span id="countActive">0</span>)
+            </button>
+            <button class="tab-btn" id="tabBlocked" onclick="showTab('blocked')" style="background: rgba(255,71,87,0.2); border-color: #ff4757; color: #ff4757;">
+                🚫 Заблокированные (<span id="countBlocked">0</span>)
+            </button>
+        </div>
+
+        <div class="content" id="content"></div>
+    </div>
+
+    <script>
+        const USERS_KEY = 'hostelManagerUsers';
+        let users = JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+        
+        // Check admin
+        const currentUsername = localStorage.getItem('hostelCurrentUser');
+        console.log('🔍 Проверка доступа:');
+        console.log('  currentUsername:', currentUsername);
+        console.log('  users:', users);
+        console.log('  users[currentUsername]:', users[currentUsername]);
+        console.log('  role:', users[currentUsername]?.role);
+        
+        if (!currentUsername) {
+            alert('⚠️ Вы не вошли в систему!');
+            window.location.href = 'index.html';
+        } else if (!users[currentUsername]) {
+            alert('⚠️ Пользователь не найден!');
+            window.location.href = 'index.html';
+        } else if (users[currentUsername].role !== 'admin') {
+            alert('⚠️ У вас нет прав администратора!');
+            window.location.href = 'index.html';
+        }
+        
+        document.getElementById('adminName').textContent = currentUsername;
+        checkExpiredUsers();
+        updateCounts();
+        showTab('active');
+        
+        // Check for expired users and auto-suspend them
+        function checkExpiredUsers() {
+            let expiredCount = 0;
+            let autoSuspendedCount = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            Object.entries(users).forEach(([username, userData]) => {
+                if (userData.status === 'active' && userData.accessExpires) {
+                    const expiryDate = new Date(userData.accessExpires);
+                    expiryDate.setHours(0, 0, 0, 0);
+                    
+                    if (expiryDate < today) {
+                        expiredCount++;
+                        
+                        // Автоматически блокируем пользователя
+                        users[username].status = 'suspended';
+                        users[username].suspendedAt = new Date().toISOString();
+                        users[username].suspendedReason = `Истек срок доступа (${expiryDate.toLocaleDateString('ru-RU')})`;
+                        autoSuspendedCount++;
+                    }
+                }
+            });
+            
+            // Сохраняем изменения если были заблокированы пользователи
+            if (autoSuspendedCount > 0) {
+                localStorage.setItem(USERS_KEY, JSON.stringify(users));
+                console.log(`🔴 Автоматически заблокировано пользователей: ${autoSuspendedCount}`);
+            }
+            
+            if (expiredCount > 0) {
+                alert(`⚠️ АВТОМАТИЧЕСКАЯ БЛОКИРОВКА!\n\n${autoSuspendedCount} пользовател${autoSuspendedCount === 1 ? 'ь' : 'ей'} с истекшим сроком автоматически заблокирован${autoSuspendedCount === 1 ? '' : 'ы'}!\n\nПричина: Истек срок доступа\n\nОни перемещены во вкладку "🚫 Заблокированные".\n\nДля возобновления доступа:\n1. Перейдите во вкладку "Заблокированные"\n2. Разблокируйте пользователя\n3. Установите новый срок доступа`);
+            }
+        }
+        
+        function updateCounts() {
+            let pending = 0, active = 0, blocked = 0;
+            Object.entries(users).forEach(([username, userData]) => {
+                if (userData.status === 'pending') pending++;
+                else if (userData.status === 'active' && userData.role !== 'admin') active++;
+                else if (userData.status === 'suspended') blocked++;
+            });
+            document.getElementById('countPending').textContent = pending;
+            document.getElementById('countActive').textContent = active;
+            document.getElementById('countBlocked').textContent = blocked;
+        }
+        
+        function showTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            
+            if (tab === 'pending') renderPending();
+            else if (tab === 'active') renderActive();
+            else if (tab === 'blocked') renderBlocked();
+        }
+        
+        function renderPending() {
+            let html = '';
+            let count = 0;
+            Object.entries(users).forEach(([username, userData]) => {
+                if (userData.status === 'pending') {
+                    count++;
+                    html += `<div class="user-card" style="border-color: #ffa502;">
+                        <div class="user-header">👤 ${username}</div>
+                        <div class="user-info">
+                            <div class="info-row"><strong style="color:#ffa502;">🔑 Логин:</strong> <span class="info-value">${username}</span></div>
+                            <div class="info-row"><strong style="color:#ff4757;">🔒 Пароль:</strong> <span class="info-value">${userData.password}</span></div>
+                            <div class="info-row">📅 ${new Date(userData.createdAt).toLocaleDateString('ru-RU')}</div>
+                        </div>
+                        <button class="action-btn" style="background:#00ff88;color:#000;" onclick="approve('${username}')">✅ ОДОБРИТЬ</button>
+                        <button class="action-btn" style="background:#ff4757;color:#fff;" onclick="reject('${username}')">❌ ОТКЛОНИТЬ</button>
+                    </div>`;
+                }
+            });
+            document.getElementById('content').innerHTML = html || '<div class="empty">📭 Нет ожидающих</div>';
+        }
+        
+        function renderActive() {
+            let html = '';
+            Object.entries(users).forEach(([username, userData]) => {
+                if (userData.status === 'active' && userData.role !== 'admin') {
+                    const count = userData.residentsCount || 0;
+                    const expires = userData.accessExpires ? new Date(userData.accessExpires).toLocaleDateString('ru-RU') : '∞ Бессрочный';
+                    const expired = userData.accessExpires && new Date(userData.accessExpires) < new Date();
+                    
+                    html += `<div class="user-card" style="border-color: ${expired ? '#ff4757' : '#00ff88'}; background: ${expired ? 'rgba(255,71,87,0.05)' : 'rgba(0,255,136,0.05)'};">
+                        <div class="user-header" style="color: ${expired ? '#ff4757' : '#00ffff'};">
+                            👤 ${username} ${expired ? '⚠️ СРОК ИСТЕК!' : '✅'}
+                        </div>
+                        <div class="user-info">
+                            ${expired ? '<div class="info-row" style="background:rgba(255,71,87,0.2);padding:10px;border-radius:8px;margin-bottom:10px;"><strong style="color:#ff4757;">⚠️ ДОСТУП ЗАБЛОКИРОВАН:</strong> <span style="color:#ff4757;">Пользователь не может войти в систему до продления срока</span></div>' : ''}
+                            <div class="info-row"><strong style="color:#ffa502;">🔑 Логин:</strong> <span class="info-value">${username}</span></div>
+                            <div class="info-row"><strong style="color:#ff4757;">🔒 Пароль:</strong> <span class="info-value">${userData.password}</span></div>
+                            <div class="info-row"><strong style="color:#00ffff;">👥 Жильцов:</strong> <span style="color:#00ff88;font-size:18px;font-weight:bold;">${count} чел.</span></div>
+                            <div class="info-row" style="color: ${expired ? '#ff4757' : '#eee'}; font-weight: ${expired ? 'bold' : 'normal'};">⏰ До: ${expires} ${expired ? '❌' : '✅'}</div>
+                            <div class="info-row">📅 ${new Date(userData.createdAt).toLocaleDateString('ru-RU')}</div>
+                        </div>
+                        <button class="action-btn" style="background:linear-gradient(90deg,#7c4dff,#00e5ff);color:#fff;" onclick="loginAs('${username}')">🔍 ПРОВЕРИТЬ</button>
+                        <button class="action-btn" style="background:#ffa502;color:#000;" onclick="setExpiry('${username}')">⏰ СРОК</button>
+                        <button class="action-btn" style="background:#ff4757;color:#fff;" onclick="block('${username}')">🚫 БЛОКИРОВАТЬ</button>
+                        ${username !== currentUsername ? `<button class="action-btn" style="background:#444;color:#fff;" onclick="del('${username}')">🗑️ УДАЛИТЬ</button>` : ''}
+                    </div>`;
+                }
+            });
+            document.getElementById('content').innerHTML = html || '<div class="empty">📭 Нет активных</div>';
+        }
+        
+        function renderBlocked() {
+            let html = '';
+            Object.entries(users).forEach(([username, userData]) => {
+                if (userData.status === 'suspended') {
+                    const suspendReason = userData.suspendedReason || 'Заблокирован администратором';
+                    const isAutoSuspended = suspendReason.includes('Истек срок');
+                    
+                    html += `<div class="user-card" style="border-color: #ff4757; background: rgba(255,71,87,0.05);">
+                        <div class="user-header" style="color: #ff4757;">🚫 ${username}</div>
+                        <div class="user-info">
+                            ${isAutoSuspended ? '<div class="info-row" style="background:rgba(255,165,2,0.2);padding:10px;border-radius:8px;margin-bottom:10px;"><strong style="color:#ffa502;">⏰ АВТОБЛОКИРОВКА:</strong> <span style="color:#ffa502;">${suspendReason}</span></div>' : ''}
+                            <div class="info-row"><strong style="color:#ffa502;">🔑 Логин:</strong> <span class="info-value">${username}</span></div>
+                            <div class="info-row"><strong style="color:#ff4757;">🔒 Пароль:</strong> <span class="info-value">${userData.password}</span></div>
+                            <div class="info-row"><strong style="color:#ff4757;">⛔ Заблокирован:</strong> ${userData.suspendedAt ? new Date(userData.suspendedAt).toLocaleDateString('ru-RU') : 'Неизвестно'}</div>
+                            ${userData.suspendedReason ? `<div class="info-row"><strong style="color:#888;">📝 Причина:</strong> ${suspendReason}</div>` : ''}
+                        </div>
+                        <button class="action-btn" style="background:#00ff88;color:#000;" onclick="unblock('${username}')">✅ РАЗБЛОКИРОВАТЬ</button>
+                        <button class="action-btn" style="background:#444;color:#fff;" onclick="del('${username}')">🗑️ УДАЛИТЬ</button>
+                    </div>`;
+                }
+            });
+            document.getElementById('content').innerHTML = html || '<div class="empty">📭 Нет заблокированных</div>';
+        }
+        
+        function approve(username) {
+            if (!confirm(`Одобрить ${username}?`)) return;
+            const days = prompt('На сколько дней? (0 = бессрочно)', '30');
+            if (days === null) return;
+            
+            users[username].status = 'active';
+            if (days !== '0') {
+                const d = new Date();
+                d.setDate(d.getDate() + parseInt(days));
+                users[username].accessExpires = d.toISOString().split('T')[0];
+            }
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            alert('✅ Одобрено!');
+            updateCounts();
+            showTab('active');
+        }
+        
+        function reject(username) {
+            if (!confirm(`Отклонить ${username}?`)) return;
+            delete users[username];
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            alert('❌ Отклонено');
+            updateCounts();
+            showTab('pending');
+        }
+        
+        function block(username) {
+            const reason = prompt(`Заблокировать ${username}?\n\nУкажите причину блокировки (необязательно):`, '');
+            if (reason === null) return;
+            
+            users[username].status = 'suspended';
+            users[username].suspendedAt = new Date().toISOString();
+            if (reason.trim()) {
+                users[username].suspendedReason = reason.trim();
+            } else {
+                users[username].suspendedReason = 'Заблокирован администратором';
+            }
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            alert('🚫 Заблокирован');
+            updateCounts();
+            showTab('blocked');
+        }
+        
+        function unblock(username) {
+            const wasAutoSuspended = users[username].suspendedReason?.includes('Истек срок');
+            
+            if (wasAutoSuspended) {
+                if (!confirm(`Разблокировать ${username}?\n\n⚠️ ВНИМАНИЕ: Этот пользователь был автоматически заблокирован из-за истечения срока.\n\nРекомендуется сначала установить новый срок доступа!\n\nВсе равно разблокировать сейчас?`)) return;
+            } else {
+                if (!confirm(`Разблокировать ${username}?`)) return;
+            }
+            
+            users[username].status = 'active';
+            delete users[username].suspendedAt;
+            delete users[username].suspendedReason;
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            
+            if (wasAutoSuspended) {
+                alert('✅ Разблокирован!\n\n⚠️ НЕ ЗАБУДЬТЕ установить новый срок доступа!');
+            } else {
+                alert('✅ Разблокирован');
+            }
+            
+            updateCounts();
+            showTab('active');
+        }
+        
+        function del(username) {
+            if (!confirm(`УДАЛИТЬ ${username}?`)) return;
+            if (!confirm('ВЫ УВЕРЕНЫ?')) return;
+            delete users[username];
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            alert('🗑️ Удален');
+            updateCounts();
+            showTab('active');
+        }
+        
+        function setExpiry(username) {
+            const days = prompt(`Срок для ${username}\\n\\n0 = бессрочно`, '30');
+            if (days === null) return;
+            
+            if (days === '0') {
+                delete users[username].accessExpires;
+            } else {
+                const d = new Date();
+                d.setDate(d.getDate() + parseInt(days));
+                users[username].accessExpires = d.toISOString().split('T')[0];
+            }
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            alert('✅ Срок установлен');
+            showTab('active');
+        }
+        
+        function loginAs(username) {
+            if (!confirm(`Зайти как ${username}?\\n\\nЧтобы вернуться - выйдите и войдите как ${currentUsername}`)) return;
+            localStorage.setItem('hostelCurrentUser', username);
+            alert(`✅ Вы зашли как ${username}\\n\\n🔙 Выйдите и войдите как ${currentUsername} чтобы вернуться`);
+            window.location.href = 'index.html';
+        }
+        
+        function logout() {
+            if (confirm('Выйти?')) {
+                localStorage.removeItem('hostelCurrentUser');
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>
