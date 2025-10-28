@@ -3,7 +3,7 @@
 // Для production используем переменную окружения или задайте свой URL
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:8000/api'
-    : 'https://your-backend-url.onrender.com/api'; // ЗАМЕНИТЕ НА ВАШ URL БЭКЕНДА!
+    : 'https://hostel-manager-f7v7.onrender.com/api'; // URL вашего бэкенда на Render
 
 // API Client
 class APIClient {
